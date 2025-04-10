@@ -155,7 +155,7 @@ router.get("/get-all-books", async (req, res) => {
       }
   
       // Build the MongoDB query
-      let mongoDbQuery = Book.find(filters).populate("owner", "fullName profileImageURL").sort({ createdAt: -1 });
+      let mongoDbQuery = Book.find(filters).populate("owner", "fullName profileImageURL favouriteBooks").sort({ createdAt: -1 });
   
       // Limit to recent 4 if specified
       if (recent === 'true') {

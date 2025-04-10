@@ -21,7 +21,7 @@ import NewLogin from './Components/NewLogin';
 
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("token"));
  
   
 

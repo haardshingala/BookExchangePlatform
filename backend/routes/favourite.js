@@ -64,11 +64,16 @@ router.delete("/remove-favourite/:bookId",AuthenticateToken, async (req,res)=>{
 router.get("/get-all-favourite-books", AuthenticateToken,async (req,res)=>{
     try {
         const id = req.user._id;
+        const books = await Book.find({
+            owner:id,
+        }).populate("owner", "fullName profileImageURL favouriteBooks").sort({ createdAt: -1 });
         const user = await User.findById(id).populate("favouriteBooks");
         if(!user){
             return res.status(404).json({message:"User not found"});
         }
-        const favBooks = user.favouriteBooks;
+        const favBooks = books.filter((book)=>{
+            return book.owner.favouriteBooks.includes(book._id);
+        })
        
         return res.status(200).json(favBooks);
     } catch (error) {

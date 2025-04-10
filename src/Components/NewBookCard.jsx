@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -27,6 +27,8 @@ const NewBookCard = ({ book }) => {
 
   const token = localStorage.getItem("token"); 
 
+
+
   const handleToggleFavorite = async () => {
     try {
       const response = await fetch(
@@ -54,6 +56,14 @@ const NewBookCard = ({ book }) => {
   };
    
     
+useEffect(()=>{
+if(book){
+ if(book.owner?.favouriteBooks?.includes(book._id)){
+setIsFavorite(true);
+
+ }
+}
+},[book])
     
 
       

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState , useEffect} from 'react';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -28,8 +28,9 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 
-export default function NewNavbar({ setIsLoggedIn, isLoggedIn, username = 'John Doe' }) {
+export default function NewNavbar({ setIsLoggedIn, isLoggedIn }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [user, setUser] = useState(null);
   const theme = useTheme();
   const navigate = useNavigate();
 
@@ -44,6 +45,34 @@ export default function NewNavbar({ setIsLoggedIn, isLoggedIn, username = 'John 
     if (event.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) return;
     setDrawerOpen(open);
   };
+
+  const token = localStorage.getItem("token");
+  
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!token) return;
+  
+      try {
+        const res = await fetch("http://localhost:5000/user/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+  
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+        } else {
+          console.error("Failed to fetch profile:", res.statusText);
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      }
+    };
+  
+    fetchProfile();
+  }, [token]);
+  
+
+    
 
   const drawerContent = (
     <Box
@@ -113,9 +142,9 @@ export default function NewNavbar({ setIsLoggedIn, isLoggedIn, username = 'John 
           alignItems: 'center',
         }}
       >
-        <Avatar alt={username} src="/path/to/user-image.jpg" sx={{ mr: 1 }} />
+        <Avatar alt={user?.fullName} src={`http://localhost:5000${user?.profileImageURL}`} sx={{ mr: 1 }} />
         <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
-          {username}
+          {user?.fullName}
         </Typography>
         <IconButton onClick={handleLogout} sx={{ color: theme.palette.secondary.main }}>
           <LogoutIcon />
@@ -182,7 +211,7 @@ export default function NewNavbar({ setIsLoggedIn, isLoggedIn, username = 'John 
           {isLoggedIn && (
             <>
               <IconButton>
-                <Avatar alt={username} src="/path/to/user-image.jpg" />
+                <Avatar alt={user?.fullName} src={`http://localhost:5000${user?.profileImageURL}`} />
               </IconButton>
               <IconButton sx={{ color: theme.palette.background.default }} onClick={toggleDrawer(true)}>
                 <MenuIcon />

@@ -10,6 +10,7 @@ const exchangeSchema = new Schema({
     enum: ["Pending", "Accepted", "Rejected", "Cancelled", "Completed"],
     default: "Pending"
   },
+  message:{ type:String},
 }, { timestamps: true });
 
 const Exchange = model("Exchange", exchangeSchema);

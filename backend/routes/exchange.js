@@ -36,12 +36,55 @@ router.post("/exchange-request/:bookId", AuthenticateToken, async (req, res) => 
     }
 });
 
+
+router.post("/request/:bookId", AuthenticateToken, async (req, res) => {
+    try {
+      const requester = req.user._id;
+      const { bookId } = req.params;
+      const { offeredBookId, message } = req.body;
+  
+      const requestedBook = await Book.findById(bookId);
+      if (!requestedBook) {
+        return res.status(404).json({ message: "Requested book not found" });
+      }
+  
+      const owner = requestedBook.owner;
+      if (owner.toString() === requester.toString()) {
+        return res.status(400).json({ message: "You can't request your own book" });
+      }
+  
+      // Prevent duplicate requests
+      const existingRequest = await Exchange.findOne({
+        requester,
+        requestedBook: bookId,
+        status: "Pending",
+      });
+  
+      if (existingRequest) {
+        return res.status(409).json({ message: "Request already exists" });
+      }
+  
+      const newRequest = new Exchange({
+        requester,
+        owner,
+        requestedBook: bookId,
+        offeredBook: offeredBookId || undefined,
+        message,
+      });
+  
+      await newRequest.save();
+      res.status(201).json({ message: "Exchange request sent", exchange: newRequest });
+    } catch (error) {
+      console.error("Exchange request error:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
 router.get("/recieved-requests", AuthenticateToken, async (req, res) => {
 
     try {
         const owner = req.user._id;
         
-        const recievedRequests = await Exchange.find({owner:owner}).populate("requester","fullName email").populate("requestedBook", "title authors");
+        const recievedRequests = await Exchange.find({owner:owner}).populate("requester","fullName email").populate("requestedBook", "title authors coverImageURL");
        
 
         res.status(200).json(recievedRequests);
@@ -56,7 +99,7 @@ router.get("/sent-requests", AuthenticateToken, async (req, res) => {
     try {
         const requester = req.user._id;
         
-        const sentRequests = await Exchange.find({requester:requester}).populate("owner","fullName email").populate("requestedBook", "title authors");
+        const sentRequests = await Exchange.find({requester:requester}).populate("owner","fullName email").populate("requestedBook", "title authors coverImageURL");
        
 
         res.status(200).json(sentRequests);

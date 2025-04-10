@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -26,28 +26,141 @@ export default function ExchangeDialog({ book, isOpen, onOpenChange }) {
   const [selectedBook, setSelectedBook] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isRequested, setIsRequested] = useState(false);
+  const [exchangeId, setExchangeId] = useState(null);
 
-  const myBooks = [
-    { id: "1", title: "The Great Gatsby" },
-    { id: "2", title: "To Kill a Mockingbird" },
-    { id: "3", title: "1984" },
-    { id: "4", title: "The Catcher in the Rye" },
-  ];
 
-  const handleExchangeRequest = () => {
-    if (!selectedBook) {
-      toast.error("Please select a book to exchange");
-      return;
+
+  const [myBooks, setMyBooks] = useState([]);
+
+  useEffect(() => {
+    const fetchBooks = async () => {
+      const token = localStorage.getItem("token");
+      try {
+        const response = await fetch("http://localhost:5000/user/MyListings", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setMyBooks(data);
+          console.log(myBooks);
+        }
+      } catch (error) {
+        console.error("Fetch error:", error);
+      }
+    };
+    fetchBooks();
+  }, []);
+
+
+
+  
+
+
+const handleExchangeRequest = async () => {
+  setLoading(true);
+  const token = localStorage.getItem("token");
+
+  try {
+    const response = await fetch(`http://localhost:5000/user/request/${book._id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        offeredBookId: selectedBook, // from the dropdown
+        message, // optional
+      }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      setIsRequested(true);
+      setExchangeId(data.exchange._id);
+    } else {
+      alert(data.message || "Failed to send exchange request.");
     }
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      onOpenChange(false);
-      toast.success("Exchange request sent successfully!");
-      setSelectedBook("");
-      setMessage("");
-    }, 1000);
+  } catch (error) {
+    console.error("Error sending exchange request:", error);
+    alert("Something went wrong. Try again.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleCancelRequest = async () => {
+  if (!exchangeId) return;
+
+  const confirmCancel = window.confirm("Are you sure you want to cancel the request?");
+  if (!confirmCancel) return;
+
+  const token = localStorage.getItem("token");
+  setLoading(true);
+
+  try {
+    const res = await fetch(
+      `http://localhost:5000/user/cancel/${exchangeId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (res.ok) {
+      setIsRequested(false);
+      setExchangeId(null);
+    } else {
+      console.error("Failed to cancel request");
+    }
+  } catch (err) {
+    console.error("Cancel request error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+useEffect(() => {
+  const fetchExistingRequest = async () => {
+    const token = localStorage.getItem("token");
+
+    try {
+      const res = await fetch("http://localhost:5000/user/sent-requests", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+
+        // Assuming you're viewing a specific book (e.g., `bookId` is the requestedBook)
+        const existingRequest = data.find(
+          (req) =>
+            req.requestedBook._id === book._id // bookId from props or route param
+        );
+
+        if (existingRequest) {
+          setIsRequested(true);
+          setExchangeId(existingRequest._id);
+          setSelectedBook(existingRequest.offeredBook?._id || "");
+          setMessage(existingRequest.message || "");
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching exchange requests:", err);
+    }
   };
+
+  fetchExistingRequest();
+}, [book._id]); // Add bookId as dependency
+
+
+
+
 
   return (
     <Dialog open={isOpen} onClose={() => onOpenChange(false)} fullWidth maxWidth="md">
@@ -123,10 +236,10 @@ export default function ExchangeDialog({ book, isOpen, onOpenChange }) {
                 src={
                   book.owner?.profileImageURL
                     ? `http://localhost:5000${book.owner.profileImageURL}`
-                    : book.owner.fullName.charAt(0).toUpperCase() // or your fallback image URL
+                    : book.owner.fullName // or your fallback image URL
                 }
               />
-             
+
 
 
               <Box>
@@ -149,7 +262,7 @@ export default function ExchangeDialog({ book, isOpen, onOpenChange }) {
                   onChange={(e) => setSelectedBook(e.target.value)}
                 >
                   {myBooks.map((b) => (
-                    <MenuItem key={b.id} value={b.id}>
+                    <MenuItem key={b._id} value={b._id}>
                       {b.title}
                     </MenuItem>
                   ))}
@@ -165,14 +278,33 @@ export default function ExchangeDialog({ book, isOpen, onOpenChange }) {
                 onChange={(e) => setMessage(e.target.value)}
               />
 
-              <Button
-                variant="contained"
-                onClick={handleExchangeRequest}
-                disabled={loading}
-                sx={{ alignSelf: "flex-start", mt: 1 }}
-              >
-                {loading ? "Sending..." : "Send Exchange Request"}
-              </Button>
+{isRequested ? (
+  <Stack direction="row" spacing={2}>
+    <Button variant="contained" disabled>
+      Requested
+    </Button>
+    <Button
+      variant="outlined"
+      color="error"
+      onClick={handleCancelRequest}
+      disabled={loading}
+    >
+      Cancel Request
+    </Button>
+  </Stack>
+) : (
+  <Button
+    variant="contained"
+    onClick={handleExchangeRequest}
+    disabled={loading}
+    sx={{ alignSelf: "flex-start", mt: 1 }}
+  >
+    {loading ? "Sending..." : "Send Exchange Request"}
+  </Button>
+)}
+
+
+
             </Stack>
           </Stack>
         </Stack>

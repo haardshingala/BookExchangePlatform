@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState , useEffect} from 'react';
 import { Box, Tabs, Tab, Card, CardContent, Typography, Button, Avatar } from '@mui/material';
+
 
 // Helper component for tab panels
 function TabPanel(props) {
@@ -17,53 +18,115 @@ function TabPanel(props) {
   );
 }
 
-// Dummy data for demonstration
-const dummyRequests = [
-  {
-    id: 1,
-    senderId: 'user123',
-    receiverId: 'user456',
-    senderName: 'Alice',
-    receiverName: 'You',
-    bookTitle: 'The Great Gatsby',
-    status: 'pending',
-    bookThumbnail: 'https://via.placeholder.com/50'
-  },
-  {
-    id: 2,
-    senderId: 'user456',
-    receiverId: 'user789',
-    senderName: 'You',
-    receiverName: 'Bob Smith',
-    bookTitle: '1984',
-    status: 'pending',
-    bookThumbnail: 'https://via.placeholder.com/50'
-  },
-  {
-    id: 3,
-    senderId: 'user789',
-    receiverId: 'user456',
-    senderName: 'Charlie',
-    receiverName: 'You',
-    bookTitle: 'To Kill a Mockingbird',
-    status: 'accepted',
-    bookThumbnail: 'https://via.placeholder.com/50'
-  }
-];
 
-// Assume current logged in user id is 'user456'
-const currentUserId = 'user456';
+
+
+
+
 
 export default function ExchangeRequests() {
   const [tab, setTab] = useState(0);
+  const [sentRequests, setSentRequests]= useState([]);
+  const [receivedRequests, setReceivedRequests]= useState([]);
+  
 
-  // Filter requests based on current user
-  const receivedRequests = dummyRequests.filter(req => req.receiverId === currentUserId);
-  const sentRequests = dummyRequests.filter(req => req.senderId === currentUserId);
+  const token = localStorage.getItem("token");
 
+  
+  const fetchReceivedRequests = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/user/recieved-requests", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setReceivedRequests(data);
+      
+    } catch (error) {
+      console.error("Error fetching sent requests:", error);
+    }
+  };
+useEffect(() => {
+  const fetchSentRequests = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/user/sent-requests", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setSentRequests(data);
+      console.log(sentRequests);
+    } catch (error) {
+      console.error("Error fetching sent requests:", error);
+    }
+  };
+
+  
+
+  if (token) {
+    fetchSentRequests();
+    fetchReceivedRequests();
+  }
+}, [token]);
+
+
+const handleAcceptRequest = async (exchangeId) => {
+  const token = localStorage.getItem("token");
+
+  try {
+    const res = await fetch(`http://localhost:5000/user/accept/${exchangeId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      alert("Exchange request accepted");
+      // Optionally re-fetch the list to update UI
+      fetchReceivedRequests(); // Or fetchReceivedRequests if you're the owner
+    } else {
+      alert(data.message);
+    }
+  } catch (error) {
+    console.error("Error accepting request:", error);
+    alert("Something went wrong while accepting the request.");
+  }
+}; 
+
+
+const handleRejectRequest = async (exchangeId) => {
+  const token = localStorage.getItem("token");
+
+  try {
+    const res = await fetch(`http://localhost:5000/user/reject/${exchangeId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      alert("Exchange request rejected");
+      // Optionally re-fetch the list to update UI
+      fetchReceivedRequests(); // Or fetchReceivedRequests if you're the owner
+    } else {
+      alert(data.message);
+    }
+  } catch (error) {
+    console.error("Error rejecting request:", error);
+    alert("Something went wrong while rejecting the request.");
+  }
+}; 
   const handleTabChange = (event, newValue) => {
     setTab(newValue);
   };
+
+  
 
   return (
     <Box sx={{ p: 3 }}>
@@ -76,28 +139,28 @@ export default function ExchangeRequests() {
           <Typography>No received exchange requests at the moment.</Typography>
         ) : (
           receivedRequests.map((req) => (
-            <Card key={req.id} sx={{ mb: 2, p: 2, display: 'flex', alignItems: 'center' }}>
+            <Card key={req._id} sx={{ mb: 2, p: 2, display: 'flex', alignItems: 'center' }}>
               <Avatar
                 variant="square"
-                src={req.bookThumbnail}
-                alt={req.bookTitle}
-                sx={{ width: 50, height: 75, mr: 2 }}
+                src={`http://localhost:5000${req.requestedBook.coverImageURL}`}
+              alt={req.requestedBook.title}
+                sx={{ width: 100, height: 150, mr: 2 }}
               />
               <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="h6">{req.senderName} requested an exchange</Typography>
+                <Typography variant="h6">{req.requester.fullName} requested an exchange</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Book: {req.bookTitle}
+                  Book: {req.requestedBook.title}
                 </Typography>
-                <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                <Typography variant="body2" display="block" sx={{ mt: 0.5 }}>
                   Status: {req.status}
                 </Typography>
               </Box>
-              {req.status === 'pending' && (
+              {req.status === 'Pending' && (
                 <Box sx={{ ml: 2 }}>
-                  <Button variant="outlined" color="primary" sx={{ mr: 1 }}>
+                  <Button variant="outlined" color="primary" sx={{ mr: 1 }} onClick={() => handleAcceptRequest(req._id)}>
                     Accept
                   </Button>
-                  <Button variant="outlined" color="error">
+                  <Button variant="outlined" color="error" onClick={() => handleRejectRequest(req._id)}>
                     Decline
                   </Button>
                 </Box>
@@ -116,22 +179,22 @@ export default function ExchangeRequests() {
           <Typography>No sent exchange requests at the moment.</Typography>
         ) : (
           sentRequests.map((req) => (
-            <Card key={req.id} sx={{ mb: 2, p: 2, display: 'flex', alignItems: 'center' }}>
+            <Card key={req._id} sx={{ mb: 2, p: 2, display: 'flex', alignItems: 'center' }}>
               <Avatar
                 variant="square"
-                src={req.bookThumbnail}
-                alt={req.bookTitle}
-                sx={{ width: 50, height: 75, mr: 2 }}
+                src={`http://localhost:5000${req.requestedBook.coverImageURL}`}
+              alt={req.requestedBook.title}
+                sx={{ width: 100, height: 150, mr: 2 }}
               />
               <Box sx={{ flexGrow: 1 }}>
                 <Typography variant="h6">You requested an exchange</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Book: {req.bookTitle}
+                  Book: {req.requestedBook.title}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                  To: {req.receiverName}
+                  To: {req.owner.fullName}
                 </Typography>
-                <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                <Typography variant="body2" display="block" sx={{ mt: 0.5 }}>
                   Status: {req.status}
                 </Typography>
               </Box>
