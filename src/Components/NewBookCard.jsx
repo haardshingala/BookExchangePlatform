@@ -1,16 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import {
-  Card,
+  Box,
+  Button,
   CardContent,
   CardMedia,
-  Typography,
-  Button,
+  Chip,
+  Grid2,
+  IconButton,
   Stack,
-  Divider,
-  IconButton, Chip, Box
+  Typography
 } from '@mui/material';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import FavoriteIcon from '@mui/icons-material/Favorite';
+import React, { useEffect, useState } from 'react';
 
 
 
@@ -25,7 +26,7 @@ const NewBookCard = ({ book }) => {
   const handleOpen = () => setDialogOpen(true);
   const handleClose = () => setDialogOpen(false);
 
-  const token = localStorage.getItem("token"); 
+  const token = localStorage.getItem("token");
 
 
 
@@ -54,23 +55,26 @@ const NewBookCard = ({ book }) => {
       console.error('Error toggling favorite:', err);
     }
   };
-   
-    
-useEffect(()=>{
-if(book){
- if(book.owner?.favouriteBooks?.includes(book._id)){
-setIsFavorite(true);
 
- }
-}
-},[book])
-    
 
-      
+  useEffect(() => {
+    if (book) {
+      if (book.owner?.favouriteBooks?.includes(book._id)) {
+        setIsFavorite(true);
+
+      }
+    }
+  }, [book])
+
+
+
 
   return (
     <>
-      <Card
+      <Grid2 item
+        size={{
+          md: 3
+        }}
         sx={{
           maxWidth: 320,
           margin: '20px auto',
@@ -164,7 +168,7 @@ setIsFavorite(true);
 
 
         </CardContent>
-      </Card>
+      </Grid2>
 
       <ExchangeDialog
         isOpen={isDialogOpen}
